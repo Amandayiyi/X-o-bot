@@ -1,0 +1,185 @@
+{% load staticfiles %}
+
+<!-- <!DOCTYPE html> -->
+<html>
+    <head>
+        <title>X-O-BOT</title>
+        <!-- <meta charset="UTF-8"> -->
+        <link rel="stylesheet" href="{% static 'css/bootstrap.css' %}"/>
+        <link rel="stylesheet" href="{% static 'css/custom.css' %}"/>
+    </head>
+    <body>
+        <div id="scrolldIV" style="overflow: scroll; height: 100%; width: 100%; border: 1px solid #999;">
+        <div class="container">
+            <div class="page-header text-center">
+                <h1>X-O-BOT</h1>
+            </div>
+            <div class="row">
+                <div class="col-xs-6 col-xs-offset-3">
+                    <ul class="list-group js-chat-log"></ul>
+                    <div class="input-group input-group-lg">
+                        <input type="text" class="form-control js-text" placeholder="Type something to begin..." x-webkit-speech="x-webkit-speech"/>
+                        <span class="input-group-btn">
+                            <button class="btn btn-primary js-say">Submit</button>
+                            <button class="btn btn-primary js-voice">Voice Input</button>
+                        </span>
+                    </div>
+                    <br /><br />
+                    <form class="form-inline" role="form" method=get action="http://www.google.com/search" target="_blank">
+                    <div class="input-group input-group-lg">
+                        <label class="sr-only" for="name">Google</label>
+                        <input type="text" class="form-control js-google" id="name" placeholder="Google: " name=q />
+                        <button type="submit" class="btn btn-primary">Search Google</button>
+                    </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        </div>
+
+
+
+        <script src="{% static 'js/jquery.js' %}"></script>
+        <script src="{% static 'js/js.cookie.js' %}"></script>
+        <script src="{% static 'js/bootstrap.js' %}"></script>
+        <script>
+            // document.write(Date());
+            var $chatlog = $('.js-chat-log');
+            var $input = $('.js-text');
+            var $sayButton = $('.js-say');
+            var $voiceInputButton = $('.js-voice');
+            var dialogflowUrl = '{% url "index" %}';
+            var $google = $('.js-google');
+
+            // // safty protection
+            // var csrftoken = Cookies.get('csrftoken');
+            // function csrfSafeMethod(method){
+            //     return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+            // }
+
+            // $.ajaxSetup({
+            //     beforeSend: function(xhr, settings){
+            //         if (!csrfSafeMethod(settings.type) && !this.crossDomain){
+            //             xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            //         }
+            //     }
+            // });
+
+            // support function for create a row in the chat area
+            // function createRow(text){
+            //     var $row = $('<li class="list-group-item"></li>');
+            //     var list = '<li class="list-group-item">'
+            //     var k = text.split("\n")
+            //     for (i = 0; i < k.length; i++){
+            //         list += k[i] + "<br />"
+            //     }
+            //     list = list + "</li>"
+            //     $row.text(list);
+            //     $chatlog.append(list);
+            // }
+
+            function openNewWindow(url){
+                window.open(url);
+            }
+
+            function createRow(text){
+                var $row = $('<li class="list-group-item"></li>');
+                // var strRegex = "^((https|http|ftp|rtsp|mms)?://)"
+                //                 + "?(([0-9a-zA-Z_!~*'().&=+$%-]+: )?[0-9a-zA-Z_!~*'().&=+$%-]+@)?"  
+                //                 + "(([0-9]{1,3}\.){3}[0-9]{1,3}"  
+                //                 + "|"
+                //                 + "([0-9a-zA-Z_!~*'()-]+\.)*"
+                //                 + "([0-9a-zA-Z][0-9a-zA-Z-]{0,61})?[0-9a-zA-Z]\."
+                //                 + "[a-z]{2,6})"
+                //                 + "(:[0-9]{1,4})?" 
+                //                 + "((/?)|"
+                //                 + "(/[0-9a-zA-Z_!~*'().;?:@&=+$,%#-]+)+/?)$";
+                //
+                var strRegex = "(?=^.{3,255}$)(http(s)?:\/\/)(www\.)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+(:\d+)*(\/\w+\.\w+)*([\?&]\w+=\w*)*";
+                // wesite must have http:// or https://
+
+                var patt = new RegExp(strRegex);
+                var website = patt.exec(text);
+
+                var list = '<li class="list-group-item">'
+                var k = text.split("\n")
+                text = ""
+                for (i = 0; i < k.length; i++){
+                    text += k[i] + "<br />"
+                }
+                k = text.split("\t")
+                for (i = 0; i < k.length; i++){
+                    list += "&nbsp&nbsp&nbsp&nbsp" + k[i]
+                }
+                if (website){
+                    list = list + "<a onclick=openNewWindow('" + website[0] +"')>click to jump</a>"
+                }
+                list = list + "</li>"
+                $row.text(list);
+                $chatlog.append(list);
+                var div = document.getElementById('scrolldIV');
+                div.scrollTop = div.scrollHeight; 
+            }
+
+            window.onload = createRow('<h2>Chat With X-O-BOT</h2>');
+            window.onload = createRow('<h4>Hello, I am ready to answer your questions!</h4>');
+
+            // submission
+            function submitInput(){
+                var inputData = {
+                    'text': $input.val()
+                }
+                createRow(inputData.text);
+                var dialogflowChatUrl = '{% url "chat" %}';
+
+                var $submit = $.ajax({
+                    type: 'POST',
+                    url: dialogflowChatUrl, 
+                    data: JSON.stringify(inputData),
+                    contentType: 'application/json'
+                });
+
+                $submit.done(function(statement){
+                    createRow(statement.text);
+                    $google.val(inputData.text);
+                    $input.val('');
+                });
+                $submit.fail(function(){});
+            }
+
+            $sayButton.click(function(){
+                submitInput();
+                var div = document.getElementById('scrolldIV');
+                div.scrollTop = div.scrollHeight; 
+
+            });
+
+            $voiceInputButton.click(function(){
+                var dialogflowUrl = '{% url "voice" %}';
+                var $submit = $.ajax({
+                    type: 'POST',
+                    url: dialogflowUrl,
+                    data: JSON.stringify(),
+                    contentType: 'application/json'
+                });
+                $submit.done(function(statement){
+                    var str = statement.text;
+                    // var res = str.split("||");
+                    // var result = res[0];
+                    // var answer = res[1];
+                    // createRow(result);
+                    // createRow(answer);
+                    $input.val(str);
+                });
+            });
+
+            $input.keydown(function(event){
+                if (event.keyCode == 13){ // key Enter
+                    submitInput();
+                    var div = document.getElementById('scrolldIV');
+                    div.scrollTop = div.scrollHeight; 
+                }
+            });
+        </script>
+    </body>
+</html>
